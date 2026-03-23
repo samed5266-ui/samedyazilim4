@@ -1,0 +1,43 @@
+name: Samed Panel APK Builder
+on: [push, workflow_dispatch]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kodlari Cek
+        uses: actions/checkout@v4
+
+      - name: Java 17 Kurulumu
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Proje Yapisini Hazirla
+        run: |
+          mkdir -p app/src/main/java/com/samed/panel
+          mkdir -p app/src/main/res/layout
+          
+          # Dosyaları doğru yerlerine kopyala
+          cp mainactivity.java app/src/main/java/com/samed/panel/MainActivity.java || cp MainActivity.java app/src/main/java/com/samed/panel/MainActivity.java
+          cp bootreceiver.java app/src/main/java/com/samed/panel/BootReceiver.java || cp BootReceiver.java app/src/main/java/com/samed/panel/BootReceiver.java
+          cp androidmanifest.xml app/src/main/AndroidManifest.xml || cp AndroidManifest.xml app/src/main/AndroidManifest.xml
+          cp activity_main.xml app/src/main/res/layout/activity_main.xml
+
+          # build.gradle dosyasını app içine taşı
+          cp build.gradle app/build.gradle
+          
+          chmod +x gradlew
+
+      - name: APK Derle
+        run: ./gradlew assembleRelease
+
+      - name: APK Yukle
+        uses: actions/upload-artifact@v4
+        with:
+          name: Samed-Panel-Release-APK
+          path: app/build/outputs/apk/release/*.apk
