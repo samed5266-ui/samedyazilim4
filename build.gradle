@@ -6,12 +6,16 @@ android {
 
     defaultConfig {
         applicationId "com.samed.panel"
-        minSdkVersion 21
+        // Android 5.0 ve üzeri tüm TV'lerde çalışması için 21 idealdir
+        minSdkVersion 21 
         targetSdkVersion 34
         versionCode 1
         versionName "1.0"
 
-        // TV UYUMLULUĞU İÇİN KRİTİK AYAR
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // TCL ve diğer Android TV'ler için KRİTİK AYAR:
+        // TV'ler genelde 32-bit (v7a) kullanır. Bu satır olmazsa "Ayrıştırma Hatası" verir.
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a"
         }
@@ -19,25 +23,23 @@ android {
 
     buildTypes {
         release {
+            // TV uygulamalarında stabilite için minify şimdilik kapalı
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-
+    
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
 }
 
-repositories {
-    google()
-    mavenCentral()
-}
-
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    
+    // WebView ve temel bileşenler için gerekli
     implementation 'androidx.core:core:1.12.0'
 }

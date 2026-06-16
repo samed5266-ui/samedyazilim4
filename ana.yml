@@ -1,9 +1,6 @@
 name: Samed Panel APK Builder
 on: [push, workflow_dispatch]
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,29 +14,49 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Proje Yapisini Hazirla
+      - name: Proje Yapisini Kur
         run: |
-          # Klasör hiyerarşisini oluştur
+          # 1. Gerekli Android klasör mimarisini oluştur
           mkdir -p app/src/main/java/com/samed/panel
           mkdir -p app/src/main/res/layout
           
-          # Dosyaları doğru yerlerine kopyala (İsimleri düzelterek)
-          cp mainactivity.java app/src/main/java/com/samed/panel/MainActivity.java || cp MainActivity.java app/src/main/java/com/samed/panel/MainActivity.java
-          cp bootreceiver.java app/src/main/java/com/samed/panel/BootReceiver.java || cp BootReceiver.java app/src/main/java/com/samed/panel/BootReceiver.java
-          cp androidmanifest.xml app/src/main/AndroidManifest.xml || cp AndroidManifest.xml app/src/main/AndroidManifest.xml
-          cp activity_main.xml app/src/main/res/layout/activity_main.xml
-
-          # Gradle dosyalarını ana dizinden app dizinine taşı (Eğer ana dizindeyse)
-          cp build.gradle app/build.gradle
+          # 2. Ana dizindeki kod ve tasarım dosyalarını doğru klasörlere taşı
+          find . -maxdepth 1 -iname "mainactivity.java" -exec cp {} app/src/main/java/com/samed/panel/MainActivity.java \;
+          find . -maxdepth 1 -iname "bootreceiver.java" -exec cp {} app/src/main/java/com/samed/panel/BootReceiver.java \;
+          find . -maxdepth 1 -iname "androidmanifest.xml" -exec cp {} app/src/main/AndroidManifest.xml \;
+          find . -maxdepth 1 -iname "activity_main.xml" -exec cp {} app/src/main/res/layout/activity_main.xml \;
           
-          # İzinleri ayarla
-          chmod +x gradlew
+          # 3. Gönderdiğiniz build.gradle dosyasını uygulama modülüne taşı
+          if [ -f build.gradle ]; then
+            cp build.gradle app/build.gradle
+          fi
+
+          # 4. İmza hatasını (Signing Error) aşmak için release moduna geçici debug imzası ekle
+          sed -i '/release {/a \ \ \ \ \ \ \ \ \ \ \ \ signingConfig signingConfigs.debug' app/build.gradle
+          
+          # 5. Kök dizin için temiz Gradle ayarlarını oluştur
+          echo "pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }" > settings.gradle
+          echo "dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }" >> settings.gradle
+          echo "rootProject.name = 'SamedPanel'" >> settings.gradle
+          echo "include ':app'" >> settings.gradle
+
+          # 6. Kök dizine eklenti yöneticisini yaz
+          echo "plugins { id 'com.android.application' version '8.2.2' apply false }" > build.gradle
+          
+          # 7. Jetpack ve AndroidX ayarlarını yapılandır
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+          
+          # 8. Gradle Wrapper'ı hazırla
+          gradle wrapper --gradle-version 8.5
 
       - name: APK Derle
-        run: ./gradlew assembleRelease
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
 
-     - name: APK Yukle
+      - name: APK Dosyasini Yukle
         uses: actions/upload-artifact@v4
         with:
-          name: Samed-Panel-APK
-          path: "**/build/outputs/apk/release/*.apk"
+          name: Samed-Panel-Release-APK
+          path: app/build/outputs/apk/release/*.apk
